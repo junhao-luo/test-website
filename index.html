@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>失物招領登錄</title>
+<style>
+:root {
+  /* 色彩 */
+  --primary: #0066cc;          /* 全站唯一的互動色（連結、按鈕、focus 邊框、勾選態） */
+  --primary-focus: #0071e3;    /* 鍵盤 focus ring / 選中態邊框 */
+  --primary-on-dark: #2997ff;  /* 深色底上的連結藍（保留變數，即使目前沒有元件用到也要定義） */
+  --ink: #1d1d1f;               /* 主要文字色 */
+  --ink-muted-80: #333333;      /* 次要文字（code 內文用） */
+  --ink-muted-48: #7a7a7a;      /* 說明文字 / disabled 文字 / placeholder */
+  --body-on-dark: #ffffff;      /* 深色底上的白字（header 標題） */
+  --body-muted: #cccccc;        /* 深色底上的次要文字（badge 預設色、相機提示文字） */
+  --canvas: #ffffff;            /* 卡片、輸入框底色 */
+  --parchment: #f5f5f7;         /* 全站頁面底色 */
+  --pearl: #fafafc;             /* 定義但目前沒有任何選擇器使用，保留即可 */
+  --surface-black: #000000;     /* header 與相機檯面的純黑 */
+  --divider-soft: #f0f0f0;      /* code 標籤邊框 */
+  --hairline: #e0e0e0;          /* 全站卡片／輸入框邊框色 */
+  --chip-translucent: rgba(210, 210, 215, .64); /* 「已拍攝」浮貼標籤的毛玻璃底色 */
+  --disabled-fill: #e8e8ed;     /* 按鈕 disabled 底色 */
+
+  /* 狀態色（成功／錯誤／警示，各有一個一般態與一個深色底態） */
+  --ok: #248a3d;        --ok-on-dark: #30d158;
+  --err: #d70015;       --err-on-dark: #ff453a;
+  --warn: #b25000;      --warn-on-dark: #ff9f0a;
+
+  /* 圓角尺度 */
+  --r-xs: 5px; --r-sm: 8px; --r-md: 11px; --r-lg: 18px; --r-pill: 9999px;
+
+  /* 間距尺度 */
+  --s-xxs: 4px; --s-xs: 8px; --s-sm: 12px; --s-md: 17px;
+  --s-lg: 24px; --s-xl: 32px; --s-xxl: 48px; --s-section: 80px; /* s-section 目前沒被用到，保留 */
+
+  /* 字型堆疊 */
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
+               "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC",
+               "Microsoft JhengHei", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui,
+                  "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC",
+                  "Microsoft JhengHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* 全站唯一一道陰影，只給「放在檯面上的實體照片」使用 */
+  --shadow-product: rgba(0, 0, 0, .22) 3px 5px 30px 0;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-size: 17px; line-height: 1.47; letter-spacing: -.374px; font-family: var(--font-text); -webkit-font-smoothing: antialiased; background: var(--parchment); color: var(--ink); }
+h1, .panel h2, #result h2 { font-family: var(--font-display); font-size: 17px; font-weight: 600; line-height: 1.24; letter-spacing: -.374px; margin: 0; }
+header { position: sticky; top: 0; z-index: 20; min-height: 48px; padding: 8px 22px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface-black); color: var(--body-on-dark); }
+header h1 { color: var(--body-on-dark); flex: 0 0 auto; }
+.badge { font-size: 12px; line-height: 1.4; letter-spacing: -.12px; font-weight: 400; padding: 3px 10px; border-radius: var(--r-pill); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: var(--body-muted); word-break: break-all; }
+.badge.live { color: var(--ok-on-dark); border-color: rgba(48,209,88,.42); }
+.badge.dead { color: var(--err-on-dark); border-color: rgba(255,69,58,.42); }
+main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; max-width: 1440px; margin: 0 auto; padding: 32px 24px 48px; }
+@media (max-width: 833px) { main { grid-template-columns: 1fr; padding: 24px 17px 32px; } }
+.panel { background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+.panel h2 { padding: 20px var(--s-lg) 14px; }
+.panel .body { padding: 0 var(--s-lg) var(--s-lg); }
+.stage { position: relative; background: var(--surface-black); aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: background-color .25s ease; }
+.stage video, .stage img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.stage img { display: none; }
+body.shot .stage { background: var(--parchment); padding: var(--s-lg); }
+body.shot .stage video { display: none; }
+body.shot .stage img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; border-radius: var(--r-sm); box-shadow: var(--shadow-product); }
+.hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--s-xl); color: var(--body-muted); font-size: 17px; line-height: 1.47; letter-spacing: -.374px; background: var(--surface-black); white-space: pre-wrap; text-align: center; }
+body.cam-ok .hint, body.shot .hint { display: none; }
+.shot-tag { position: absolute; left: 16px; top: 16px; display: none; background: var(--chip-translucent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); padding: 6px 14px; border-radius: var(--r-pill); font-size: 14px; line-height: 1.29; letter-spacing: -.224px; color: var(--ink); }
+body.shot .shot-tag { display: block; }
+.controls { display: flex; gap: var(--s-sm); padding: 16px var(--s-lg) var(--s-lg); flex-wrap: wrap; }
+button { font-family: var(--font-text); font-size: 17px; font-weight: 400; line-height: 1.47; letter-spacing: -.374px; border-radius: var(--r-pill); border: 1px solid transparent; padding: 11px 22px; min-height: 44px; cursor: pointer; flex: 1 1 auto; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease; }
+button:not(:disabled):active { transform: scale(.95); }
+button:focus-visible { outline: 2px solid var(--primary-focus); outline-offset: 2px; }
+button:disabled { background: var(--disabled-fill); color: var(--ink-muted-48); border-color: transparent; cursor: default; }
+.btn-main { background: var(--primary); color: var(--canvas); }
+.btn-main:disabled { background: var(--disabled-fill); color: var(--ink-muted-48); border-color: transparent; }
+.btn-ghost { background: transparent; color: var(--primary); border-color: var(--primary); }
+.btn-ghost:disabled { background: var(--disabled-fill); color: var(--ink-muted-48); border-color: transparent; }
+.btn-send { background: var(--primary); color: var(--canvas); font-size: 18px; font-weight: 600; line-height: 1; padding: 15px 28px; min-height: 48px; margin-top: var(--s-xxs); }
+.btn-send:disabled { background: var(--disabled-fill); color: var(--ink-muted-48); border-color: transparent; }
+label, .label { display: block; font-size: 14px; font-weight: 600; line-height: 1.29; letter-spacing: -.224px; color: var(--ink); margin-bottom: var(--s-xs); }
+.label .opt { font-weight: 400; color: var(--ink-muted-48); }
+textarea, input[type=text], input[type=datetime-local], select { width: 100%; background: var(--canvas); color: var(--ink); border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 12px 16px; font-family: var(--font-text); font-size: 17px; line-height: 1.47; letter-spacing: -.374px; }
+input[type=datetime-local] { max-width: 300px; }
+textarea { min-height: 140px; resize: vertical; }
+textarea:focus, input[type=text]:focus, input[type=datetime-local]:focus, select:focus { outline: 2px solid var(--primary-focus); outline-offset: -1px; border-color: var(--primary-focus); }
+::placeholder { color: var(--ink-muted-48); }
+.field { margin-bottom: var(--s-lg); }
+.field:last-child { margin-bottom: 0; }
+.example { font-size: 14px; line-height: 1.43; letter-spacing: -.224px; color: var(--ink-muted-48); margin-top: var(--s-xs); }
+code { font-family: var(--font-mono); font-size: .92em; background: var(--parchment); border: 1px solid var(--divider-soft); border-radius: var(--r-xs); padding: 1px 5px; color: var(--ink-muted-80); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-xs); }
+.chip { position: relative; display: inline-flex; }
+.chip input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.chip span { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px; background: var(--canvas); color: var(--ink); border: 1px solid var(--hairline); border-radius: var(--r-pill); font-size: 14px; line-height: 1.29; letter-spacing: -.224px; cursor: pointer; user-select: none; transition: border-color .15s ease, color .15s ease, transform .12s ease; }
+.chip span:active { transform: scale(.95); }
+.chip input:checked + span { border: 2px solid var(--primary-focus); padding: 9px 17px; color: var(--primary); font-weight: 600; }
+.chip input:focus-visible + span { outline: 2px solid var(--primary-focus); outline-offset: 2px; }
+#locOther { max-width: 320px; margin-top: var(--s-xs); }
+#locOther[hidden] { display: none !important; }
+#status { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md); font-size: 14px; line-height: 1.43; letter-spacing: -.224px; border: 1px solid var(--hairline); background: var(--parchment); color: var(--ink-muted-80); display: none; white-space: pre-wrap; word-break: break-word; }
+#status.show { display: block; }
+#status.ok { border-color: rgba(36,138,61,.32); background: rgba(36,138,61,.06); color: var(--ok); }
+#status.err { border-color: rgba(215,0,21,.32); background: rgba(215,0,21,.05); color: var(--err); }
+#status.busy { border-color: rgba(178,80,0,.32); background: rgba(178,80,0,.05); color: var(--warn); }
+#result { display: none; margin-top: 16px; overflow: hidden; background: var(--parchment); border: 1px solid var(--hairline); border-radius: var(--r-lg); }
+#result.show { display: block; }
+#result h2 { padding: 16px 20px 10px; }
+#result table { width: 100%; border-collapse: collapse; }
+#result th, #result td { text-align: left; padding: 10px 20px; border-top: 1px solid var(--hairline); vertical-align: top; font-size: 14px; line-height: 1.43; letter-spacing: -.224px; }
+#result th { color: var(--ink-muted-48); font-weight: 600; width: 34%; white-space: nowrap; }
+#result td { color: var(--ink); word-break: break-word; }
+#result a { color: var(--primary); text-decoration: none; }
+details.cfg { max-width: 1440px; margin: 0 auto 48px; padding: 0 24px; }
+@media (max-width: 833px) { details.cfg { padding: 0 17px; } }
+details.cfg summary { cursor: pointer; color: var(--primary); font-size: 17px; line-height: 1.47; letter-spacing: -.374px; padding: 10px 0; user-select: none; list-style: none; }
+details.cfg summary::-webkit-details-marker { display: none; }
+details.cfg summary:focus-visible { outline: 2px solid var(--primary-focus); outline-offset: 2px; border-radius: var(--r-xs); }
+details.cfg .box { background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: var(--s-lg); margin-top: var(--s-xs); }
+.row { display: flex; gap: var(--s-sm); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--s-sm); }
+.row:last-child { margin-bottom: 0; }
+.row .grow { flex: 1 1 320px; }
+.row button { flex: 0 0 auto; min-height: 44px; padding: 11px 22px; font-size: 14px; line-height: 1.29; letter-spacing: -.224px; }
+.cfg-desc { font-size: 14px; line-height: 1.43; letter-spacing: -.224px; color: var(--ink-muted-48); margin-top: var(--s-sm); }
+</style>
+</head>
+<body>
+<header>
+<h1>失物招領登錄</h1>
+<span class="badge" id="camBadge">相機初始化中…</span>
+<span class="badge" id="hookBadge">webhook 未設定</span>
+</header>
+<main>
+<div class="panel">
+<h2>相機畫面</h2>
+<div class="stage">
+<video id="video" autoplay playsinline muted></video>
+<img id="photo" alt="拍攝結果">
+<div class="shot-tag">已拍攝</div>
+<div class="hint" id="camHint">正在要求相機權限…</div>
+</div>
+<div class="controls">
+<button class="btn-main" id="btnShot" disabled>📷 拍攝並記錄時間</button>
+<button class="btn-ghost" id="btnRetake" disabled>重拍</button>
+</div>
+</div>
+<div class="panel">
+<h2>拾獲資訊</h2>
+<div class="body">
+<div class="field">
+<div class="label">拾獲地點</div>
+<div class="chips" role="radiogroup">
+<label class="chip"><input type="radio" name="loc" value="共善樓"><span>共善樓</span></label>
+<label class="chip"><input type="radio" name="loc" value="運動場"><span>運動場</span></label>
+<label class="chip"><input type="radio" name="loc" value="體育館"><span>體育館</span></label>
+<label class="chip"><input type="radio" name="loc" value="行政一館"><span>行政一館</span></label>
+<label class="chip"><input type="radio" name="loc" value="行政二館"><span>行政二館</span></label>
+<label class="chip"><input type="radio" name="loc" value="語文大樓"><span>語文大樓</span></label>
+<label class="chip"><input type="radio" name="loc" value="人社館"><span>人社館</span></label>
+<label class="chip"><input type="radio" name="loc" value="圖書館"><span>圖書館</span></label>
+<label class="chip"><input type="radio" name="loc" value="丘逢甲紀念館"><span>丘逢甲紀念館</span></label>
+<label class="chip"><input type="radio" name="loc" value="科航館"><span>科航館</span></label>
+<label class="chip"><input type="radio" name="loc" value="人言大樓"><span>人言大樓</span></label>
+<label class="chip"><input type="radio" name="loc" value="資電館"><span>資電館</span></label>
+<label class="chip"><input type="radio" name="loc" value="其他"><span>其他</span></label>
+</div>
+<input type="text" id="locOther" placeholder="請輸入地點" aria-label="其他地點" hidden>
+</div>
+<div class="field">
+<label class="label" for="foundAt">拾獲時間</label>
+<input type="datetime-local" id="foundAt">
+<div class="example">按下拍攝鍵時會自動帶入當下時間，若不是當場撿到可以自己改。</div>
+</div>
+<div class="field">
+<label class="label" for="desc">補充描述<span class="opt"> — 選填</span></label>
+<textarea id="desc" placeholder="例如：在二樓靠窗的座位撿到，傘柄有點磨損。"></textarea>
+<div class="example">物品是什麼可以交給照片辨識，這欄只要補充選項講不清楚的細節（確切位置、外觀特徵）就好。</div>
+</div>
+<button class="btn-send" id="btnSend" disabled style="width:100%">送出</button>
+<div id="status"></div>
+<div id="result" class="panel"><h2>n8n 回傳結果</h2><table id="resultTable"></table></div>
+</div>
+</div>
+</main>
+<details class="cfg">
+<summary>⚙️ 設定（webhook 位址 / 相機來源）</summary>
+<div class="box">
+<div class="row">
+<div class="grow">
+<label class="label" for="hookUrl">n8n Webhook URL</label>
+<input type="text" id="hookUrl" placeholder="http://localhost:5678/webhook/lost-found">
+</div>
+<button class="btn-ghost" id="btnSaveHook">儲存</button>
+</div>
+<div class="row">
+<div class="grow">
+<label class="label" for="camSelect">相機裝置</label>
+<select id="camSelect"><option>載入中…</option></select>
+</div>
+<button class="btn-ghost" id="btnSwitchCam">切換</button>
+</div>
+<div class="cfg-desc">測試流程時把 n8n 的 workflow 切到「Execute workflow」聆聽模式，webhook 路徑要改成 <code>/webhook-test/lost-found</code>；正式啟用（Active）後才是 <code>/webhook/lost-found</code>。</div>
+</div>
+</details>
+<canvas id="canvas" hidden></canvas>
+<script>
+(function(){ 'use strict';
+var LS_HOOK = 'lostfound.webhookUrl';
+var LS_DEVID = 'lostfound.deviceId';
+var DEFAULT_HOOK = 'http://localhost:5678/webhook/lost-found';
+var video = document.getElementById('video');
+var photo = document.getElementById('photo');
+var canvas = document.getElementById('canvas');
+var camBadge = document.getElementById('camBadge');
+var hookBadge = document.getElementById('hookBadge');
+var camHint = document.getElementById('camHint');
+var btnShot = document.getElementById('btnShot');
+var btnRetake = document.getElementById('btnRetake');
+var btnSend = document.getElementById('btnSend');
+var foundAt = document.getElementById('foundAt');
+var desc = document.getElementById('desc');
+var locOther = document.getElementById('locOther');
+var statusEl = document.getElementById('status');
+var resultEl = document.getElementById('result');
+var resultTable = document.getElementById('resultTable');
+var hookUrl = document.getElementById('hookUrl');
+var camSelect = document.getElementById('camSelect');
+var btnSaveHook = document.getElementById('btnSaveHook');
+var btnSwitchCam = document.getElementById('btnSwitchCam');
+var shot = null;
+var foundAtTouched = false;
+var currentStream = null;
+
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function nowLocalInputValue(d){ return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function isoLocal(d){ var tz = -d.getTimezoneOffset(); var sign = tz >= 0 ? '+' : '-'; var abs = Math.abs(tz); var hh = pad2(Math.floor(abs/60)); var mm = pad2(abs % 60); return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + sign + hh + ':' + mm; }
+function extractFormat(d){ return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function fileNameFromDate(d){ return 'lostfound-' + d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds()) + '.jpg'; }
+function parseFoundAt(val){ var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(val); if(!m) return null; var y = parseInt(m[1],10); var mo = parseInt(m[2],10)-1; var da = parseInt(m[3],10); var hh = parseInt(m[4],10); var mi = parseInt(m[5],10); var d = new Date(y, mo, da, hh, mi, 0, 0); if(isNaN(d.getTime())) return null; return d; }
+function getTimezone(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){ return ''; } }
+function setStatus(type, msg){ statusEl.textContent = msg || ''; if(!msg){ statusEl.className = ''; statusEl.style.display = 'none'; return; } statusEl.className = 'show ' + type; }
+function clearStatus(){ setStatus('', ''); }
+function clearResult(){ resultEl.className = 'panel'; resultEl.style.display = 'none'; resultTable.innerHTML = ''; }
+function renderResult(obj){
+  var data = obj;
+  if(Array.isArray(data)){ data = data[0] || {}; }
+  if(data && typeof data === 'object' && data.json && typeof data.json === 'object'){ data = data.json; }
+  if(!data || typeof data !== 'object'){ data = {}; }
+  var keys = Object.keys(data);
+  if(keys.length === 0){ clearResult(); return; }
+  var html = '';
+  for(var i=0;i<keys.length;i++){
+    var k = keys[i];
+    var v = data[k];
+    var vs;
+    if(v === null || v === undefined){ vs = ''; }
+    else if(typeof v === 'object'){ try{ vs = JSON.stringify(v); }catch(e){ vs = String(v); } }
+    else { vs = String(v); }
+    var tdContent = vs;
+    if(typeof v === 'string' && (v.indexOf('http://')===0 || v.indexOf('https://')===0)){
+      var esc = vs.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      tdContent = '<a href="' + esc + '" target="_blank" rel="noopener">' + esc + '</a>';
+    } else {
+      tdContent = vs.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    var kEsc = k.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<tr><th>' + kEsc + '</th><td>' + tdContent + '</td></tr>';
+  }
+  resultTable.innerHTML = html;
+  resultEl.className = 'panel show';
+  resultEl.style.display = 'block';
+}
+function getSelectedLocation(){
+  var checked = document.querySelector('input[name="loc"]:checked');
+  if(!checked) return { value: '', isOther: false, el: null };
+  var v = checked.value;
+  if(v === '其他'){
+    return { value: locOther.value.trim(), isOther: true, el: checked, raw: v };
+  }
+  return { value: v, isOther: false, el: checked, raw: v };
+}
+function refreshHookBadge(){
+  var url = localStorage.getItem(LS_HOOK);
+  if(url === null || url === undefined){ url = DEFAULT_HOOK; }
+  else { url = url.trim(); if(!url) url = DEFAULT_HOOK; }
+  // also sync input value if not already set? input already set at init
+  var display = url.replace(/^https?:\/\//, '');
+  hookBadge.textContent = display;
+  hookBadge.className = 'badge live';
+  // per spec: as long as non-empty string => live (and we always have default). If truly empty after removal we would show webhook 未設定 but spec says after storage logic.
+  // If localStorage has empty and we fallback to default, we still show live.
+}
+function getEffectiveHookUrl(){
+  var v = hookUrl.value.trim();
+  if(v) return v;
+  var s = localStorage.getItem(LS_HOOK);
+  if(s && s.trim()) return s.trim();
+  return DEFAULT_HOOK;
+}
+function stopCurrentStream(){
+  if(currentStream){
+    var tracks = currentStream.getTracks();
+    for(var i=0;i<tracks.length;i++){ try{ tracks[i].stop(); }catch(e){} }
+    currentStream = null;
+  }
+  video.srcObject = null;
+}
+function populateCamSelect(currentDeviceId){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices){
+    camSelect.innerHTML = '<option>找不到相機</option>';
+    return;
+  }
+  navigator.mediaDevices.enumerateDevices().then(function(devices){
+    var cams = [];
+    for(var i=0;i<devices.length;i++){ if(devices[i].kind === 'videoinput') cams.push(devices[i]); }
+    if(cams.length === 0){
+      camSelect.innerHTML = '<option>找不到相機</option>';
+      return;
+    }
+    var html = '';
+    for(var j=0;j<cams.length;j++){
+      var d = cams[j];
+      var label = d.label || ('相機 ' + (j+1));
+      var escLabel = label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      var selected = (currentDeviceId && d.deviceId === currentDeviceId) ? ' selected' : '';
+      var escId = d.deviceId.replace(/"/g,'&quot;');
+      html += '<option value="' + escId + '"' + selected + '>' + escLabel + '</option>';
+    }
+    camSelect.innerHTML = html;
+    if(!currentDeviceId){
+      // try to select first
+    }
+  }).catch(function(){
+    camSelect.innerHTML = '<option>找不到相機</option>';
+  });
+}
+function startCamera(deviceId){
+  camBadge.className = 'badge';
+  camBadge.textContent = '相機初始化中…';
+  camHint.textContent = '正在要求相機權限…';
+  document.body.classList.remove('cam-ok');
+  btnShot.disabled = true;
+  stopCurrentStream();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    camBadge.textContent = '瀏覽器不支援';
+    camBadge.className = 'badge dead';
+    camHint.textContent = '這個瀏覽器沒有 getUserMedia。請用 Chromium 或 Firefox 開啟。';
+    return;
+  }
+  var constraints = { audio: false, video: deviceId ? { deviceId: { exact: deviceId } } : { width: { ideal: 1280 }, height: { ideal: 720 } } };
+  navigator.mediaDevices.getUserMedia(constraints).then(function(stream){
+    currentStream = stream;
+    video.srcObject = stream;
+    // ensure play
+    var p = video.play();
+    if(p && p.catch){ p.catch(function(){}); }
+    document.body.classList.add('cam-ok');
+    btnShot.disabled = false;
+    var track = stream.getVideoTracks()[0];
+    var settings = {};
+    try{ settings = track.getSettings ? track.getSettings() : {}; }catch(e){}
+    var w = settings.width || video.videoWidth || 0;
+    var h = settings.height || video.videoHeight || 0;
+    // fallback to video dimensions once loaded
+    function updateBadgeWithDims(){
+      var vw = video.videoWidth || w;
+      var vh = video.videoHeight || h;
+      if(vw && vh){
+        camBadge.textContent = '相機就緒 · ' + vw + '×' + vh;
+      } else {
+        camBadge.textContent = '相機就緒';
+      }
+    }
+    if(video.videoWidth){ updateBadgeWithDims(); }
+    else {
+      video.addEventListener('loadedmetadata', function onMeta(){
+        video.removeEventListener('loadedmetadata', onMeta);
+        updateBadgeWithDims();
+      });
+      // also immediate
+      camBadge.textContent = '相機就緒';
+    }
+    if(!camBadge.textContent || camBadge.textContent === '相機就緒'){
+      // already set
+    }
+    camBadge.className = 'badge live';
+    // if video already has dims update after short timeout
+    setTimeout(updateBadgeWithDims, 500);
+    var did = settings.deviceId || deviceId || (track.getSettings ? (track.getSettings().deviceId || '') : '');
+    // some browsers don't return deviceId in settings, try to keep requested
+    if(deviceId) did = deviceId;
+    else if(track.label){
+      // try to find via enumerate later
+    }
+    if(did){ try{ localStorage.setItem(LS_DEVID, did); }catch(e){} }
+    else if(deviceId){ try{ localStorage.setItem(LS_DEVID, deviceId); }catch(e){} }
+    // also need to handle case where deviceId not known: use enumerate to map label not needed
+    // populate select; try to use actual deviceId if we can detect
+    var effectiveId = did || deviceId || '';
+    // if no effectiveId but stream has label, we can enumerate to find matching label
+    if(!effectiveId){
+      // we will populate without selection
+      populateCamSelect('');
+    } else {
+      populateCamSelect(effectiveId);
+    }
+    // also if we didn't have did, enumerate will fill and we might still store later when user switches
+    // For default case, after enumerate we can try to store the selected one? spec says store this顆鏡頭's deviceId - if we don't know it we can't, but okay.
+  }).catch(function(err){
+    document.body.classList.remove('cam-ok');
+    btnShot.disabled = true;
+    camBadge.textContent = '相機失敗';
+    camBadge.className = 'badge dead';
+    var name = err && err.name ? err.name : 'Error';
+    var msg = '無法開啟相機：' + name + '\n';
+    if(name === 'NotAllowedError'){
+      msg += '權限被拒。請在網址列左側的鎖頭圖示允許相機存取後重新整理。';
+    } else if(name === 'NotFoundError'){
+      msg += '找不到任何相機裝置，確認 USB webcam 有接好（/dev/video0）。';
+    } else if(name === 'NotReadableError'){
+      msg += '裝置被其他程式占用，關掉其他正在用相機的程式再試。';
+    } else if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
+      msg += '目前不是安全來源（secure context）。請用 http://localhost 開啟，不要用 file:// 或區網 IP。';
+    } else {
+      msg += err.message || String(err);
+    }
+    camHint.textContent = msg;
+    populateCamSelect('');
+  });
+}
+
+// init
+(function init(){
+  var storedHook = localStorage.getItem(LS_HOOK);
+  if(storedHook === null){ hookUrl.value = DEFAULT_HOOK; }
+  else { hookUrl.value = storedHook; }
+  // if stored empty string case: hookUrl empty, badge should fallback to default but remains live per refresh logic
+  refreshHookBadge();
+  // if user never stored, badge after refresh shows default live; spec says initial badge "webhook 未設定" but then immediately should show stored/default? Spec says initial text "webhook 未設定" then on load we update to display URL. So we keep live display after refresh.
+  // Ensure hookBadge not "webhook 未設定" after init? Actually spec says initial "webhook 未設定" but JS should update. We do.
+  foundAt.value = nowLocalInputValue(new Date());
+  var savedDev = null;
+  try{ savedDev = localStorage.getItem(LS_DEVID); }catch(e){}
+  startCamera(savedDev || null);
+})();
+
+// events
+foundAt.addEventListener('input', function(){ foundAtTouched = true; });
+foundAt.addEventListener('change', function(){ foundAtTouched = true; });
+
+var locRadios = document.querySelectorAll('input[name="loc"]');
+for(var i=0;i<locRadios.length;i++){
+  locRadios[i].addEventListener('change', function(e){
+    var v = e.target.value;
+    if(v === '其他'){
+      locOther.hidden = false;
+      locOther.focus();
+    } else {
+      locOther.hidden = true;
+    }
+  });
+}
+
+btnShot.addEventListener('click', function(){
+  if(!video.videoWidth){
+    setStatus('err', '相機畫面還沒準備好，稍等一秒再按。');
+    return;
+  }
+  var now = new Date();
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  var dataURL = canvas.toDataURL('image/jpeg', 0.85);
+  var base64 = dataURL.split(',')[1] || '';
+  var fName = fileNameFromDate(now);
+  shot = { base64: base64, fileName: fName, dataUrl: dataURL };
+  photo.src = dataURL;
+  document.body.classList.add('shot');
+  if(!foundAtTouched){
+    foundAt.value = nowLocalInputValue(now);
+  }
+  btnRetake.disabled = false;
+  btnSend.disabled = false;
+  btnShot.disabled = true;
+  clearStatus();
+  clearResult();
+  if(desc) desc.focus();
+});
+
+btnRetake.addEventListener('click', function(){
+  shot = null;
+  photo.removeAttribute('src');
+  document.body.classList.remove('shot');
+  btnRetake.disabled = true;
+  btnSend.disabled = true;
+  btnShot.disabled = false;
+  // keep cam-ok; if camera was ok before, btnShot should be enabled (it is)
+  // if camera failed, btnShot will stay disabled? but we enable anyway; next startCamera would disable. Keep as spec: re-enable btnShot
+  if(!document.body.classList.contains('cam-ok')){
+    btnShot.disabled = true;
+  }
+  clearStatus();
+  clearResult();
+});
+
+btnSaveHook.addEventListener('click', function(){
+  var v = hookUrl.value.trim();
+  try{
+    if(!v){ localStorage.removeItem(LS_HOOK); }
+    else { localStorage.setItem(LS_HOOK, v); }
+  }catch(e){}
+  refreshHookBadge();
+  setStatus('ok', 'Webhook 位址已儲存。');
+});
+
+btnSwitchCam.addEventListener('click', function(){
+  var did = camSelect.value;
+  // if select shows placeholder options like "載入中…" or "找不到相機", its value is that text, not a deviceId; we should not treat as valid id if length unexpected? But we will still try; getUserMedia will fail.
+  // Filter out placeholder: if options text is 載入中… or 找不到相機, do not start.
+  var txt = camSelect.options[camSelect.selectedIndex] ? camSelect.options[camSelect.selectedIndex].textContent : '';
+  if(txt === '載入中…' || txt === '找不到相機'){
+    return;
+  }
+  try{ localStorage.setItem(LS_DEVID, did); }catch(e){}
+  startCamera(did);
+});
+
+btnSend.addEventListener('click', function(){
+  // validation in exact order
+  if(!shot || !shot.base64){
+    setStatus('err', '請先按「拍攝並記錄時間」。');
+    btnShot.focus();
+    return;
+  }
+  var locInfo = getSelectedLocation();
+  var checkedEl = document.querySelector('input[name="loc"]:checked');
+  if(checkedEl && checkedEl.value === '其他' && !locOther.value.trim()){
+    setStatus('err', '選了「其他」，請在下方欄位填寫實際地點。');
+    locOther.focus();
+    return;
+  }
+  if(!checkedEl){
+    setStatus('err', '請先選擇拾獲地點。');
+    var first = document.querySelector('input[name="loc"]');
+    if(first) first.focus();
+    return;
+  }
+  var foundVal = foundAt.value.trim();
+  var found = parseFoundAt(foundVal);
+  if(!foundVal || !found){
+    setStatus('err', '請選擇拾獲時間。');
+    foundAt.focus();
+    return;
+  }
+  var locValue = locInfo.value;
+  var note = desc.value.trim();
+  var text = '【拾獲地點】' + locValue + '\n【拾獲時間】' + extractFormat(found);
+  if(note){ text += '\n【拾獲者補充】' + note; }
+  var payload = {
+    capturedAt: isoLocal(found),
+    capturedAtDisplay: extractFormat(found),
+    capturedAtEpoch: found.getTime(),
+    timezone: getTimezone(),
+    description: text,
+    foundLocation: locValue,
+    foundAt: isoLocal(found),
+    foundAtDisplay: extractFormat(found),
+    note: note,
+    fileName: shot.fileName,
+    mimeType: 'image/jpeg',
+    imageBase64: shot.base64
+  };
+  var kb = Math.round(shot.base64.length / 1365);
+  setStatus('busy', '上傳中…（' + kb + ' KB 影像，LLM 辨識約需數秒）');
+  clearResult();
+  btnSend.disabled = true;
+  btnShot.disabled = true;
+  btnRetake.disabled = true;
+  var hook = getEffectiveHookUrl();
+  fetch(hook, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(resp){
+    return resp.text().then(function(txt){
+      if(!resp.ok){
+        throw new Error('n8n 回應 HTTP ' + resp.status + '\n' + txt.slice(0,400));
+      }
+      var data;
+      try{ data = JSON.parse(txt); }catch(e){ data = { '回應': txt.slice(0,400) }; }
+      return data;
+    });
+  }).then(function(data){
+    setStatus('ok', '✓ 已送出並寫入 Google Sheet。');
+    renderResult(data);
+    btnRetake.disabled = false;
+    btnShot.disabled = false;
+    // btnSend remains disabled on success per spec (流程視為完成)
+    btnSend.disabled = true;
+    if(!document.body.classList.contains('cam-ok')){
+      btnShot.disabled = true;
+    }
+  }).catch(function(err){
+    var msg = '✗ 送出失敗\n' + (err && err.message ? err.message : String(err));
+    if(msg.indexOf('Failed to fetch') !== -1){
+      msg += '\n可能原因：\n· webhook URL 不對或 workflow 沒啟用（Active）\n· n8n Webhook 節點沒開 CORS：Options → Allowed Origins (CORS) 設成 *\n· 測試模式要用 /webhook-test/ 路徑，且要先按 Execute workflow';
+    }
+    setStatus('err', msg);
+    btnSend.disabled = false;
+    btnShot.disabled = false;
+    btnRetake.disabled = false;
+    if(!document.body.classList.contains('cam-ok')){
+      btnShot.disabled = true;
+    }
+    // if shot still exists, retake should stay enabled; but on failure spec says all three recover. Retake should be !shot ? true : false? Actually after shot, retake was true. On failure all recover, so retake true.
+    if(!shot){
+      btnRetake.disabled = true;
+      btnSend.disabled = true;
+    }
+  });
+});
+
+})();
+</script>
+</body>
+</html>
