@@ -1,0 +1,10 @@
+.streamlit/secrets.toml
+.venv/
+.venv*/
+__pycache__/
+.pytest_cache/
+node_modules/
+**/node_modules/
+**/dist/
+chroma_db/
+course_registry.json
